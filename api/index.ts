@@ -1,9 +1,9 @@
 import express from 'express';
-import { callGeminiWithRollingKeys, getEnvironmentGeminiKeys } from '../src/server/geminiHelper';
+import { callGeminiWithRollingKeys, getEnvironmentGeminiKeys } from '../src/server/geminiHelper.js';
 import {
   runRequirementIntelligenceEngine,
   runRequirementVerificationEngine
-} from '../src/server/rieEngine';
+} from '../src/server/rieEngine.js';
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));

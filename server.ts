@@ -2,11 +2,11 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { Type } from '@google/genai';
-import { callGeminiWithRollingKeys, getEnvironmentGeminiKeys } from './src/server/geminiHelper';
+import { callGeminiWithRollingKeys, getEnvironmentGeminiKeys } from './src/server/geminiHelper.js';
 import {
   runRequirementIntelligenceEngine,
   runRequirementVerificationEngine
-} from './src/server/rieEngine';
+} from './src/server/rieEngine.js';
 
 async function startServer() {
   const app = express();

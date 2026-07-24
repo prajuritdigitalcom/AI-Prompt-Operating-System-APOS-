@@ -1,5 +1,5 @@
 import { Type } from '@google/genai';
-import { callGeminiWithRollingKeys } from './geminiHelper';
+import { callGeminiWithRollingKeys } from './geminiHelper.js';
 import { RequirementModel, RequirementVerification } from '../types';
 
 /**
