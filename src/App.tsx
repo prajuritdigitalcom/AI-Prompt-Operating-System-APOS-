@@ -37,13 +37,23 @@ export default function App() {
   const [frameworkCache, setFrameworkCache] = React.useState<Record<string, FrameworkCache>>({});
   const [lastRefreshDate, setLastRefreshDate] = React.useState<string>(new Date().toISOString());
   const [activeRecord, setActiveRecord] = React.useState<GeneratedPromptRecord | null>(null);
+  const [serverKeysCount, setServerKeysCount] = React.useState<number>(1);
 
-  // Initialize storage state on mount
+  // Initialize storage state on mount & fetch server keys count
   React.useEffect(() => {
     setHistory(getStoredHistory());
     setUserApiKeys(getStoredApiKeys());
     setFrameworkCache(getStoredFrameworkCache());
     setLastRefreshDate(getLastFrameworkRefresh());
+
+    fetch('/api/server-keys-count')
+      .then(r => r.json())
+      .then(data => {
+        if (typeof data.count === 'number' && data.count > 0) {
+          setServerKeysCount(data.count);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleSavePromptRecord = (record: GeneratedPromptRecord) => {
@@ -112,6 +122,8 @@ export default function App() {
           isMobileOpen={isMobileSidebarOpen}
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
           historyCount={history.length}
+          userApiKeysCount={userApiKeys.length}
+          serverKeysCount={serverKeysCount}
         />
 
         {/* Main Workspace Area */}

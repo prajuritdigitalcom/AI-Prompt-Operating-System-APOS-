@@ -18,6 +18,8 @@ interface SidebarProps {
   isMobileOpen: boolean;
   onCloseMobile: () => void;
   historyCount: number;
+  userApiKeysCount: number;
+  serverKeysCount: number;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -27,7 +29,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleCollapse,
   isMobileOpen,
   onCloseMobile,
-  historyCount
+  historyCount,
+  userApiKeysCount,
+  serverKeysCount
 }) => {
   const menuItems: { id: NavigationTab; label: string; icon: React.FC<{ className?: string }>; badge?: string | number }[] = [
     { id: 'generate', label: 'Generate Prompt', icon: Sparkles },
@@ -125,21 +129,56 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Footer Collapse Button for Desktop */}
-      <div className="px-3.5 pt-4 border-t border-gray-100 dark:border-gray-800/80 hidden md:block">
-        <button
-          onClick={onToggleCollapse}
-          className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 hover:bg-gray-100 dark:hover:bg-gray-700/80 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-xs font-semibold transition-all border border-gray-200/60 dark:border-gray-700/50"
-        >
-          {isCollapsed ? (
-            <ChevronRight className="w-4 h-4" />
-          ) : (
-            <>
-              <ChevronLeft className="w-4 h-4" />
-              <span>Collapse Sidebar</span>
-            </>
-          )}
-        </button>
+      {/* Status API Keys Gemini Info Box & Collapse Button */}
+      <div className="px-3.5 pt-3 border-t border-gray-100 dark:border-gray-800/80 space-y-2.5">
+        {(!isCollapsed || isMobileOpen) ? (
+          <div className="p-3 rounded-xl bg-gray-50/90 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/80 space-y-2 text-xs">
+            <div className="flex items-center gap-1.5 font-bold text-gray-800 dark:text-gray-200">
+              <KeyRound className="w-3.5 h-3.5 text-[#FE4C6F]" />
+              <span>Status API Keys Gemini</span>
+            </div>
+            <div className="space-y-1 text-gray-600 dark:text-gray-300 font-medium">
+              <div className="flex items-center justify-between">
+                <span>Server</span>
+                <span className="font-bold text-gray-900 dark:text-white bg-gray-200/60 dark:bg-gray-700/60 px-2 py-0.5 rounded-full text-[11px]">
+                  ({serverKeysCount})
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Lokal</span>
+                <span className="font-bold text-gray-900 dark:text-white bg-gray-200/60 dark:bg-gray-700/60 px-2 py-0.5 rounded-full text-[11px]">
+                  ({userApiKeysCount})
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div
+            className="hidden md:flex flex-col items-center gap-1 p-2 rounded-xl bg-gray-50 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/80 text-[10px] text-gray-600 dark:text-gray-300 font-bold"
+            title={`Status API Keys Gemini:\nServer (${serverKeysCount})\nLokal (${userApiKeysCount})`}
+          >
+            <KeyRound className="w-3.5 h-3.5 text-[#FE4C6F]" />
+            <span className="text-[9px]">S:{serverKeysCount}</span>
+            <span className="text-[9px]">L:{userApiKeysCount}</span>
+          </div>
+        )}
+
+        {/* Footer Collapse Button for Desktop */}
+        <div className="hidden md:block">
+          <button
+            onClick={onToggleCollapse}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 hover:bg-gray-100 dark:hover:bg-gray-700/80 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-xs font-semibold transition-all border border-gray-200/60 dark:border-gray-700/50"
+          >
+            {isCollapsed ? (
+              <ChevronRight className="w-4 h-4" />
+            ) : (
+              <>
+                <ChevronLeft className="w-4 h-4" />
+                <span>Collapse Sidebar</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

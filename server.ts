@@ -25,6 +25,26 @@ async function startServer() {
     });
   });
 
+  // Gemini Server Keys Count
+  app.get('/api/server-keys-count', (req, res) => {
+    const envKeysRaw = process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || '';
+    const parsedEnvKeys = envKeysRaw
+      .split(/[\n,;]+/)
+      .map(k => k.trim())
+      .filter(Boolean);
+
+    let keyIndex = 1;
+    while (process.env[`GEMINI_API_KEY_${keyIndex}`]) {
+      const idxKey = process.env[`GEMINI_API_KEY_${keyIndex}`]?.trim();
+      if (idxKey && !parsedEnvKeys.includes(idxKey)) {
+        parsedEnvKeys.push(idxKey);
+      }
+      keyIndex++;
+    }
+
+    res.json({ count: parsedEnvKeys.length });
+  });
+
   // 1. Requirement Intelligence & Verification Endpoint (RIE & RV)
   app.post('/api/analyze-requirements', async (req, res) => {
     try {
