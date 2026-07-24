@@ -33,10 +33,28 @@ export async function callGeminiWithRollingKeys(options: CallGeminiOptions): Pro
     }
   }
 
-  const envKey = process.env.GEMINI_API_KEY;
-  if (envKey && !candidates.some(c => c.key === envKey)) {
-    candidates.push({ key: envKey, label: 'Public Environment Key' });
+  // Environment Keys Support (Single, Comma-separated, or GEMINI_API_KEYS / GEMINI_API_KEY_1, GEMINI_API_KEY_2)
+  const envKeysRaw = process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || '';
+  const parsedEnvKeys = envKeysRaw
+    .split(/[\n,;]+/)
+    .map(k => k.trim())
+    .filter(Boolean);
+
+  // Also check GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.
+  let keyIndex = 1;
+  while (process.env[`GEMINI_API_KEY_${keyIndex}`]) {
+    const idxKey = process.env[`GEMINI_API_KEY_${keyIndex}`]?.trim();
+    if (idxKey && !parsedEnvKeys.includes(idxKey)) {
+      parsedEnvKeys.push(idxKey);
+    }
+    keyIndex++;
   }
+
+  parsedEnvKeys.forEach((k, idx) => {
+    if (k && !candidates.some(c => c.key === k)) {
+      candidates.push({ key: k, label: `Environment Key #${idx + 1}` });
+    }
+  });
 
   if (candidates.length === 0) {
     throw new Error('No Gemini API keys available. Please configure an API key in Settings or Environment Variables.');
