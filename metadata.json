@@ -1,0 +1,6 @@
+{
+  "name": "AI Prompt Operating System (APOS)",
+  "description": "Transform Ideas Into AI-Ready Markdown using a Multi-Framework Prompt Engine (Google, Anthropic, OpenAI, DSPy), Automated Audit, Patch Engine, and Multi-API Rolling management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
