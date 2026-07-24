@@ -15,38 +15,53 @@ export interface GeminiCallResult {
 export function getEnvironmentGeminiKeys(): { key: string; label: string }[] {
   const envKeysMap = new Map<string, string>();
 
-  // 1. Direct env vars or comma-separated in GEMINI_API_KEY / GEMINI_API_KEYS
-  const rawGroup = process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || '';
-  rawGroup
-    .split(/[\n,;]+/)
-    .map(k => k.trim())
-    .filter(Boolean)
-    .forEach((k) => {
-      if (!envKeysMap.has(k)) {
-        envKeysMap.set(k, `Environment Key #${envKeysMap.size + 1}`);
-      }
-    });
-
-  // 2. Scan all process.env keys dynamically (e.g. GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.)
+  // Scan all process.env variables dynamically for any Gemini API key name patterns
   Object.keys(process.env).forEach(envName => {
     const upper = envName.toUpperCase();
-    if (upper.startsWith('GEMINI_API_KEY') || upper.startsWith('GEMINI_KEY')) {
+    if (
+      upper.includes('GEMINI_API_KEY') ||
+      upper.includes('GEMINI_KEY') ||
+      upper.includes('GEMINI_API')
+    ) {
       const val = process.env[envName]?.trim();
-      if (val) {
+      if (val && !val.includes('MY_GEMINI_API_KEY') && !val.includes('YOUR_GEMINI')) {
+        // Handle single or comma/newline/semicolon separated keys in one variable
         val
           .split(/[\n,;]+/)
           .map(k => k.trim())
           .filter(Boolean)
           .forEach(k => {
             if (!envKeysMap.has(k)) {
-              envKeysMap.set(k, `Env (${envName})`);
+              envKeysMap.set(k, envName);
             }
           });
       }
     }
   });
 
-  return Array.from(envKeysMap.entries()).map(([key, label]) => ({ key, label }));
+  const result = Array.from(envKeysMap.entries()).map(([key, envName], idx) => ({
+    key,
+    label: `Env (${envName})`
+  }));
+
+  // HIGH-VISIBILITY LOG FOR VERCEL & SERVER LOGS
+  console.log('====================================================');
+  console.log(`[VERCEL LOGS] [Gemini Key Scanner] Timestamp: ${new Date().toISOString()}`);
+  console.log(`[VERCEL LOGS] Total unique Gemini API keys detected: ${result.length}`);
+  if (result.length > 0) {
+    result.forEach((item, index) => {
+      const snippet = item.key.length > 8
+        ? `${item.key.substring(0, 6)}...${item.key.substring(item.key.length - 4)}`
+        : '***';
+      console.log(`[VERCEL LOGS]   Key #${index + 1} [Source: ${item.label}]: ${snippet}`);
+    });
+  } else {
+    console.log('[VERCEL LOGS] WARNING: No Gemini API keys found in process.env variables!');
+    console.log('[VERCEL LOGS] Available process.env keys with "GEMINI" in name:', Object.keys(process.env).filter(k => k.toUpperCase().includes('GEMINI')));
+  }
+  console.log('====================================================');
+
+  return result;
 }
 
 /**

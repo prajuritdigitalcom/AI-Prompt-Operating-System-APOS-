@@ -49,7 +49,7 @@ export default function App() {
     fetch('/api/server-keys-count')
       .then(r => r.json())
       .then(data => {
-        if (typeof data.count === 'number' && data.count > 0) {
+        if (typeof data.count === 'number') {
           setServerKeysCount(data.count);
         }
       })
