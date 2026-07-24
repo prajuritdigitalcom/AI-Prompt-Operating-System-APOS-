@@ -9,9 +9,11 @@ import {
   FileText,
   ListChecks,
   X,
-  Sparkles
+  Sparkles,
+  RotateCcw
 } from 'lucide-react';
 import { FrameworkCache, FrameworkKey, UserApiKey } from '../types';
+import { DEFAULT_FRAMEWORKS } from '../data/defaultFrameworks';
 
 interface FrameworkCacheViewProps {
   frameworkCache: Record<string, FrameworkCache>;
@@ -28,13 +30,21 @@ export const FrameworkCacheView: React.FC<FrameworkCacheViewProps> = ({
 }) => {
   const [selectedFwKey, setSelectedFwKey] = React.useState<FrameworkKey | null>(null);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
-  const [refreshSuccess, setRefreshSuccess] = React.useState(false);
+  const [refreshSuccess, setRefreshSuccess] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+
+  const handleResetDefaults = () => {
+    if (window.confirm('Reset seluruh Framework Cache ke Aturan Standar Resmi APOS (8 Google, 9 Anthropic, 8 OpenAI, 8 DSPy)?')) {
+      onSaveFrameworkCache(DEFAULT_FRAMEWORKS);
+      setRefreshSuccess('Framework Cache berhasil dipulihkan ke Aturan Standar Resmi APOS!');
+      setTimeout(() => setRefreshSuccess(null), 4000);
+    }
+  };
 
   const handleRefreshCache = async () => {
     setIsRefreshing(true);
     setError(null);
-    setRefreshSuccess(false);
+    setRefreshSuccess(null);
 
     const activeCustomKeys = userApiKeys.filter(k => k.status === 'active').map(k => k.key);
     const primaryKey = activeCustomKeys[0] || '';
@@ -51,8 +61,8 @@ export const FrameworkCacheView: React.FC<FrameworkCacheViewProps> = ({
       });
 
       if (!res.ok) {
-        const errJson = await res.json();
-        throw new Error(errJson.error || 'Failed to refresh framework cache');
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Gagal memperbarui Framework Cache dari Gemini API');
       }
 
       const { data } = await res.json();
@@ -64,25 +74,33 @@ export const FrameworkCacheView: React.FC<FrameworkCacheViewProps> = ({
         Object.keys(data.frameworks).forEach(key => {
           const fw = data.frameworks[key];
           if (updatedCache[key]) {
+            const rules = fw.rules && fw.rules.length > 0 ? fw.rules : updatedCache[key].rules;
+            const recommendations = fw.recommendations && fw.recommendations.length > 0 ? fw.recommendations : updatedCache[key].recommendations;
+            const auditChecklist = fw.auditChecklist && fw.auditChecklist.length > 0 ? fw.auditChecklist : updatedCache[key].auditChecklist;
+
             updatedCache[key] = {
               ...updatedCache[key],
-              version: fw.version || '2026.2',
+              version: fw.version || '2026.2 (Live Updated)',
               lastRefreshed: now,
-              principles: fw.principles || updatedCache[key].principles,
-              rules: fw.rules || updatedCache[key].rules,
-              recommendations: fw.recommendations || updatedCache[key].recommendations,
-              antiPatterns: fw.antiPatterns || updatedCache[key].antiPatterns
+              principles: fw.principles && fw.principles.length > 0 ? fw.principles : updatedCache[key].principles,
+              rules,
+              recommendations,
+              antiPatterns: fw.antiPatterns && fw.antiPatterns.length > 0 ? fw.antiPatterns : updatedCache[key].antiPatterns,
+              auditChecklist,
+              ruleCount: rules.length,
+              recommendationCount: recommendations.length,
+              auditChecklistCount: auditChecklist.length
             };
           }
         });
 
         onSaveFrameworkCache(updatedCache);
-        setRefreshSuccess(true);
-        setTimeout(() => setRefreshSuccess(false), 3000);
+        setRefreshSuccess('Framework Cache berhasil diperbarui & dinormalisasi melalui AI!');
+        setTimeout(() => setRefreshSuccess(null), 4000);
       }
     } catch (err: any) {
       console.error('Cache refresh error:', err);
-      setError(err.message || 'Cache refresh failed');
+      setError(err.message || 'Gagal memperbarui Framework Cache');
     } finally {
       setIsRefreshing(false);
     }
@@ -108,20 +126,31 @@ export const FrameworkCacheView: React.FC<FrameworkCacheViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={handleRefreshCache}
-          disabled={isRefreshing}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#FE4C6F] hover:bg-[#E63E61] text-white font-bold text-xs sm:text-sm shadow-md shadow-[#FE4C6F]/25 active:scale-95 transition-all"
-        >
-          <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          <span>{isRefreshing ? 'Normalizing Rules...' : 'Refresh Framework Cache'}</span>
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={handleResetDefaults}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold text-xs active:scale-95 transition-all"
+            title="Reset ke Aturan Standar Default"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Reset Standar Default</span>
+          </button>
+
+          <button
+            onClick={handleRefreshCache}
+            disabled={isRefreshing}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#FE4C6F] hover:bg-[#E63E61] text-white font-bold text-xs sm:text-sm shadow-md shadow-[#FE4C6F]/25 active:scale-95 transition-all"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>{isRefreshing ? 'Normalizing Rules...' : 'Refresh Framework Cache'}</span>
+          </button>
+        </div>
       </div>
 
       {refreshSuccess && (
         <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center gap-2">
           <ShieldCheck className="w-4 h-4" />
-          <span>Framework Cache berhasil diperbarui & dinormalisasi melalui Gemini API!</span>
+          <span>{refreshSuccess}</span>
         </div>
       )}
 

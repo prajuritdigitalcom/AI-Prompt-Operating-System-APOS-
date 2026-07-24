@@ -97,7 +97,23 @@ export function getStoredFrameworkCache(): Record<string, FrameworkCache> {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.FRAMEWORK_CACHE);
     if (!raw) return DEFAULT_FRAMEWORKS;
-    return JSON.parse(raw);
+    const parsed: Record<string, FrameworkCache> = JSON.parse(raw);
+
+    // Verify valid framework structure
+    let needsRepair = false;
+    Object.keys(DEFAULT_FRAMEWORKS).forEach(key => {
+      if (!parsed[key] || !Array.isArray(parsed[key].rules) || parsed[key].rules.length === 0) {
+        needsRepair = true;
+      }
+    });
+
+    if (needsRepair) {
+      console.warn('Framework cache was empty or invalid. Auto-restoring to APOS Standard Defaults.');
+      localStorage.setItem(STORAGE_KEYS.FRAMEWORK_CACHE, JSON.stringify(DEFAULT_FRAMEWORKS));
+      return DEFAULT_FRAMEWORKS;
+    }
+
+    return parsed;
   } catch (err) {
     console.error('Failed to load framework cache:', err);
     return DEFAULT_FRAMEWORKS;

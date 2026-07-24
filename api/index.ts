@@ -371,15 +371,54 @@ app.post('/api/refresh-frameworks', async (req, res) => {
     const { userApiKey, rollingKeys } = req.body;
 
     const refreshPrompt = `
-You are the Framework Normalizer Engine of APOS.
-Generate updated, normalized rule sets and audit checklists for the 4 core AI Prompt Engineering frameworks:
-1. Google Prompting Strategies
-2. Anthropic Prompt Engineering
-3. OpenAI Prompt Engineering
-4. DSPy Framework
+You are the Framework Normalizer Engine of APOS. Your responsibility is to analyze and extract the REAL, ACCURATE, and DISTINCT rules, recommendations, anti-patterns, and audit checklists directly corresponding to the official documentation of the 4 core AI Prompt Engineering frameworks:
 
-Provide updated principles, rules, recommendations, anti-patterns, and audit checklists for each.
+1. google: Google Prompting Strategies (https://ai.google.dev/gemini-api/docs/prompting-strategies)
+   - Focus: Objective, Domain Context, Clear Directives, Output Format, Few-Shot Examples, System Instructions.
+   - Extract ALL distinct official rules & guidelines from Google's guide.
+
+2. anthropic: Anthropic Claude Prompt Engineering (https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview)
+   - Focus: Role/Persona, Context, Scratchpad/Thinking block (<thinking>), XML Tag Delimiters (<context>, <instructions>), Prefilling, Negative Constraints.
+   - Extract ALL distinct official rules & guidelines from Anthropic's guide.
+
+3. openai: OpenAI Prompt Engineering Guide (https://platform.openai.com/docs/guides/prompt-engineering)
+   - Focus: Explicit Instructions, Reference Texts, Complex Workflow Splitting, Chain-of-Thought ("Give time to think"), External Tools, Systematic Testing.
+   - Extract ALL distinct official rules & guidelines from OpenAI's guide.
+
+4. dspy: DSPy Programming Framework (https://dspy-docs.vercel.app/)
+   - Focus: Compiler Mindset, Modular Reasoning, Signatures (Inputs -> Outputs), Teleprompters/Optimizers, Assertions & Assert/Suggest, Quantitative Evaluation.
+   - Extract ALL distinct official rules & guidelines from DSPy's framework.
+
+CRITICAL REQUIREMENTS:
+- DO NOT use artificial min/max limits or force identical counts across frameworks!
+- Each framework MUST reflect its OWN unique vendor documentation with its real, comprehensive set of rules, recommendations, anti-patterns, and audit checklist items.
+- Provide the true, natural count of items that genuinely represents each vendor's documentation.
 `;
+
+    const fwSchema = {
+      type: Type.OBJECT,
+      properties: {
+        version: { type: Type.STRING },
+        principles: { type: Type.ARRAY, items: { type: Type.STRING } },
+        rules: { type: Type.ARRAY, items: { type: Type.STRING } },
+        recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
+        antiPatterns: { type: Type.ARRAY, items: { type: Type.STRING } },
+        auditChecklist: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              id: { type: Type.STRING },
+              item: { type: Type.STRING },
+              category: { type: Type.STRING },
+              weight: { type: Type.NUMBER }
+            },
+            required: ['id', 'item', 'category', 'weight']
+          }
+        }
+      },
+      required: ['version', 'principles', 'rules', 'recommendations', 'antiPatterns', 'auditChecklist']
+    };
 
     const result = await callGeminiWithRollingKeys({
       userApiKey,
@@ -396,50 +435,10 @@ Provide updated principles, rules, recommendations, anti-patterns, and audit che
               frameworks: {
                 type: Type.OBJECT,
                 properties: {
-                  google: {
-                    type: Type.OBJECT,
-                    properties: {
-                      version: { type: Type.STRING },
-                      principles: { type: Type.ARRAY, items: { type: Type.STRING } },
-                      rules: { type: Type.ARRAY, items: { type: Type.STRING } },
-                      recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
-                      antiPatterns: { type: Type.ARRAY, items: { type: Type.STRING } }
-                    },
-                    required: ['version', 'principles', 'rules', 'recommendations', 'antiPatterns']
-                  },
-                  anthropic: {
-                    type: Type.OBJECT,
-                    properties: {
-                      version: { type: Type.STRING },
-                      principles: { type: Type.ARRAY, items: { type: Type.STRING } },
-                      rules: { type: Type.ARRAY, items: { type: Type.STRING } },
-                      recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
-                      antiPatterns: { type: Type.ARRAY, items: { type: Type.STRING } }
-                    },
-                    required: ['version', 'principles', 'rules', 'recommendations', 'antiPatterns']
-                  },
-                  openai: {
-                    type: Type.OBJECT,
-                    properties: {
-                      version: { type: Type.STRING },
-                      principles: { type: Type.ARRAY, items: { type: Type.STRING } },
-                      rules: { type: Type.ARRAY, items: { type: Type.STRING } },
-                      recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
-                      antiPatterns: { type: Type.ARRAY, items: { type: Type.STRING } }
-                    },
-                    required: ['version', 'principles', 'rules', 'recommendations', 'antiPatterns']
-                  },
-                  dspy: {
-                    type: Type.OBJECT,
-                    properties: {
-                      version: { type: Type.STRING },
-                      principles: { type: Type.ARRAY, items: { type: Type.STRING } },
-                      rules: { type: Type.ARRAY, items: { type: Type.STRING } },
-                      recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
-                      antiPatterns: { type: Type.ARRAY, items: { type: Type.STRING } }
-                    },
-                    required: ['version', 'principles', 'rules', 'recommendations', 'antiPatterns']
-                  }
+                  google: fwSchema,
+                  anthropic: fwSchema,
+                  openai: fwSchema,
+                  dspy: fwSchema
                 },
                 required: ['google', 'anthropic', 'openai', 'dspy']
               }
@@ -458,7 +457,12 @@ Provide updated principles, rules, recommendations, anti-patterns, and audit che
     });
   } catch (err: any) {
     console.error('Error in /api/refresh-frameworks:', err);
-    res.status(500).json({ error: err.message || 'Cache refresh failed' });
+    const isKeyExhausted = err.name === 'GeminiExhaustedError' || err.message?.includes('429') || err.message?.includes('limit');
+    res.status(500).json({
+      error: err.message || 'Cache refresh failed',
+      isKeyExhausted,
+      keyStatusLog: err.keyStatusLog || []
+    });
   }
 });
 
