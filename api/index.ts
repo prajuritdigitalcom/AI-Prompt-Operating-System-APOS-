@@ -1,5 +1,5 @@
 import express from 'express';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 import { callGeminiWithRollingKeys, getEnvironmentGeminiKeys } from '../src/server/geminiHelper.js';
 import {
   runRequirementIntelligenceEngine,
@@ -148,14 +148,297 @@ Construct a production-grade Markdown prompt.
       }
     });
 
+    const markdownOutput = result.response.text || '';
+
     res.json({
-      prompt: result.response.text || '',
+      markdownOutput,
       usedKeyLabel: result.usedKeyLabel,
       keyStatusLog: result.keyStatusLog
     });
   } catch (err: any) {
     console.error('Error in /api/generate-prompt:', err);
     res.status(500).json({ error: err.message || 'Prompt Generation failed' });
+  }
+});
+
+// 3. Multi Framework Audit
+app.post('/api/audit-prompt', async (req, res) => {
+  try {
+    const { promptMarkdown, userNeed, userGoal, userApiKey, rollingKeys } = req.body;
+
+    if (!promptMarkdown) {
+      return res.status(400).json({ error: 'promptMarkdown is required' });
+    }
+
+    const auditPrompt = `
+You are the Multi-Framework Audit Engine of APOS.
+Audit the following generated Markdown Prompt against four official frameworks:
+
+1. Google Framework: Objective clarity, Context depth, Output format specification, Delimiter usage. (Score 0-100)
+2. Anthropic Framework: Expert Role precision, Scratchpad <thinking> instructions, XML tag structure, Edge-case handling. (Score 0-100)
+3. OpenAI Framework: Explicit instructions, Negative constraints, Multi-step workflow, Delimiters. (Score 0-100)
+4. DSPy Framework: Modular pipeline structure, Evaluation criteria, Assertions, Reusability. (Score 0-100)
+
+Prompt to Audit:
+\`\`\`markdown
+${promptMarkdown}
+\`\`\`
+
+User Context:
+Need: "${userNeed || 'General Prompt'}"
+Goal: "${userGoal || 'High quality output'}"
+
+Provide scores for each framework, calculate overall score (weighted average), give specific actionable patch recommendations for each framework, list specific passed checklist items, and list failed checklist items.
+`;
+
+    const result = await callGeminiWithRollingKeys({
+      userApiKey,
+      rollingKeys,
+      params: {
+        model: 'gemini-3.6-flash',
+        contents: auditPrompt,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              scores: {
+                type: Type.OBJECT,
+                properties: {
+                  google: { type: Type.INTEGER },
+                  anthropic: { type: Type.INTEGER },
+                  openai: { type: Type.INTEGER },
+                  dspy: { type: Type.INTEGER },
+                  overall: { type: Type.INTEGER }
+                },
+                required: ['google', 'anthropic', 'openai', 'dspy', 'overall']
+              },
+              patchRecommendations: {
+                type: Type.OBJECT,
+                properties: {
+                  google: { type: Type.STRING },
+                  anthropic: { type: Type.STRING },
+                  openai: { type: Type.STRING },
+                  dspy: { type: Type.STRING },
+                  generalFixes: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                  }
+                },
+                required: ['google', 'anthropic', 'openai', 'dspy', 'generalFixes']
+              },
+              passedChecklist: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING }
+              },
+              failedChecklist: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING }
+              }
+            },
+            required: ['scores', 'patchRecommendations', 'passedChecklist', 'failedChecklist']
+          }
+        }
+      }
+    });
+
+    const auditData = JSON.parse(result.response.text || '{}');
+
+    res.json({
+      audit: auditData,
+      usedKeyLabel: result.usedKeyLabel,
+      keyStatusLog: result.keyStatusLog
+    });
+  } catch (err: any) {
+    console.error('Error in /api/audit-prompt:', err);
+    res.status(500).json({ error: err.message || 'Audit failed' });
+  }
+});
+
+// 4. Patch Engine & Re-Audit
+app.post('/api/patch-prompt', async (req, res) => {
+  try {
+    const { promptMarkdown, audit, userNeed, userGoal, userApiKey, rollingKeys } = req.body;
+
+    if (!promptMarkdown || !audit) {
+      return res.status(400).json({ error: 'promptMarkdown and audit are required' });
+    }
+
+    const patchPrompt = `
+You are the Patch Engine of APOS.
+Your job is to apply patch recommendations to elevate the quality score of a Markdown Prompt to 95+ across all four frameworks.
+
+Original Prompt:
+\`\`\`markdown
+${promptMarkdown}
+\`\`\`
+
+Audit Failures & Recommendations:
+- Google Fix: ${audit.patchRecommendations?.google}
+- Anthropic Fix: ${audit.patchRecommendations?.anthropic}
+- OpenAI Fix: ${audit.patchRecommendations?.openai}
+- DSPy Fix: ${audit.patchRecommendations?.dspy}
+- General Fixes: ${JSON.stringify(audit.patchRecommendations?.generalFixes || [])}
+
+Rewrite and enhance the Markdown prompt to patch all weaknesses.
+Maintain the required section structure:
+# ROLE
+# OBJECTIVE
+# CONTEXT
+# REQUIREMENTS
+# CONSTRAINTS
+<thinking>
+</thinking>
+# OUTPUT FORMAT
+# SUCCESS CRITERIA & EVALUATION
+# NOTES & EDGE CASES
+
+Return JSON containing the patchedMarkdown and the new re-audited scores.
+`;
+
+    const result = await callGeminiWithRollingKeys({
+      userApiKey,
+      rollingKeys,
+      params: {
+        model: 'gemini-3.6-flash',
+        contents: patchPrompt,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              patchedMarkdown: { type: Type.STRING },
+              improvedScore: {
+                type: Type.OBJECT,
+                properties: {
+                  google: { type: Type.INTEGER },
+                  anthropic: { type: Type.INTEGER },
+                  openai: { type: Type.INTEGER },
+                  dspy: { type: Type.INTEGER },
+                  overall: { type: Type.INTEGER }
+                },
+                required: ['google', 'anthropic', 'openai', 'dspy', 'overall']
+              },
+              appliedPatches: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING }
+              }
+            },
+            required: ['patchedMarkdown', 'improvedScore', 'appliedPatches']
+          }
+        }
+      }
+    });
+
+    const patchedData = JSON.parse(result.response.text || '{}');
+
+    res.json({
+      patchedMarkdown: patchedData.patchedMarkdown,
+      improvedScore: patchedData.improvedScore,
+      appliedPatches: patchedData.appliedPatches,
+      usedKeyLabel: result.usedKeyLabel,
+      keyStatusLog: result.keyStatusLog
+    });
+  } catch (err: any) {
+    console.error('Error in /api/patch-prompt:', err);
+    res.status(500).json({ error: err.message || 'Patch Engine failed' });
+  }
+});
+
+// 5. Refresh Framework Cache
+app.post('/api/refresh-frameworks', async (req, res) => {
+  try {
+    const { userApiKey, rollingKeys } = req.body;
+
+    const refreshPrompt = `
+You are the Framework Normalizer Engine of APOS.
+Generate updated, normalized rule sets and audit checklists for the 4 core AI Prompt Engineering frameworks:
+1. Google Prompting Strategies
+2. Anthropic Prompt Engineering
+3. OpenAI Prompt Engineering
+4. DSPy Framework
+
+Provide updated principles, rules, recommendations, anti-patterns, and audit checklists for each.
+`;
+
+    const result = await callGeminiWithRollingKeys({
+      userApiKey,
+      rollingKeys,
+      params: {
+        model: 'gemini-3.6-flash',
+        contents: refreshPrompt,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              refreshedAt: { type: Type.STRING },
+              frameworks: {
+                type: Type.OBJECT,
+                properties: {
+                  google: {
+                    type: Type.OBJECT,
+                    properties: {
+                      version: { type: Type.STRING },
+                      principles: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      rules: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      antiPatterns: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    },
+                    required: ['version', 'principles', 'rules', 'recommendations', 'antiPatterns']
+                  },
+                  anthropic: {
+                    type: Type.OBJECT,
+                    properties: {
+                      version: { type: Type.STRING },
+                      principles: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      rules: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      antiPatterns: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    },
+                    required: ['version', 'principles', 'rules', 'recommendations', 'antiPatterns']
+                  },
+                  openai: {
+                    type: Type.OBJECT,
+                    properties: {
+                      version: { type: Type.STRING },
+                      principles: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      rules: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      antiPatterns: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    },
+                    required: ['version', 'principles', 'rules', 'recommendations', 'antiPatterns']
+                  },
+                  dspy: {
+                    type: Type.OBJECT,
+                    properties: {
+                      version: { type: Type.STRING },
+                      principles: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      rules: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      antiPatterns: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    },
+                    required: ['version', 'principles', 'rules', 'recommendations', 'antiPatterns']
+                  }
+                },
+                required: ['google', 'anthropic', 'openai', 'dspy']
+              }
+            },
+            required: ['refreshedAt', 'frameworks']
+          }
+        }
+      }
+    });
+
+    const data = JSON.parse(result.response.text || '{}');
+    res.json({
+      success: true,
+      data,
+      refreshedAt: new Date().toISOString()
+    });
+  } catch (err: any) {
+    console.error('Error in /api/refresh-frameworks:', err);
+    res.status(500).json({ error: err.message || 'Cache refresh failed' });
   }
 });
 
