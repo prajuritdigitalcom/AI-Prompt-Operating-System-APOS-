@@ -1,4 +1,5 @@
 import express from 'express';
+import { GoogleGenAI } from '@google/genai';
 import { callGeminiWithRollingKeys, getEnvironmentGeminiKeys } from '../src/server/geminiHelper.js';
 import {
   runRequirementIntelligenceEngine,
@@ -23,6 +24,31 @@ app.get('/api/health', (req, res) => {
 app.get('/api/server-keys-count', (req, res) => {
   const keys = getEnvironmentGeminiKeys();
   res.json({ count: keys.length, labels: keys.map(k => k.label) });
+});
+
+// Test API Key Endpoint
+app.post('/api/test-key', async (req, res) => {
+  try {
+    const { apiKey } = req.body;
+    if (!apiKey || typeof apiKey !== 'string' || !apiKey.trim()) {
+      return res.status(400).json({ valid: false, error: 'API Key is required' });
+    }
+
+    const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.6-flash',
+      contents: 'Ping'
+    });
+
+    if (response && response.text) {
+      return res.json({ valid: true });
+    } else {
+      return res.json({ valid: false, error: 'Empty response from Gemini API' });
+    }
+  } catch (err: any) {
+    console.error('Error in /api/test-key:', err.message);
+    return res.json({ valid: false, error: err.message || 'Invalid API key or network error' });
+  }
 });
 
 // 1. Requirement Intelligence & Verification Endpoint (RIE & RV)
