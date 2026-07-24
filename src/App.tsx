@@ -84,9 +84,11 @@ export default function App() {
       {/* Mobile Top Header Toggle Bar */}
       <div className="md:hidden flex items-center justify-between p-3.5 bg-white dark:bg-[#1F2937] border-b border-gray-200 dark:border-gray-800">
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#FE4C6F] text-white">
-            <Sparkles className="w-4 h-4" />
-          </div>
+          <img
+            src="https://i.ibb.co.com/wr0x733r/prajurit-digital.jpg"
+            alt="Prajurit Digital"
+            className="w-8 h-8 rounded-lg object-cover border border-gray-200 dark:border-gray-700"
+          />
           <span className="font-extrabold text-base bg-gradient-to-r from-[#FE4C6F] to-pink-500 bg-clip-text text-transparent">
             APOS
           </span>

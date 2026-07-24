@@ -53,9 +53,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 isCollapsed ? 'md:justify-center md:w-full' : ''
               }`}
             >
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[#FE4C6F] text-white shadow-md shadow-[#FE4C6F]/20 group-hover:scale-105 transition-transform shrink-0">
-                <Sparkles className="w-5 h-5" />
-              </div>
+              <img
+                src="https://i.ibb.co.com/wr0x733r/prajurit-digital.jpg"
+                alt="Prajurit Digital"
+                className="w-10 h-10 rounded-xl object-cover shadow-md shadow-[#FE4C6F]/20 group-hover:scale-105 transition-transform shrink-0 border border-gray-200 dark:border-gray-700"
+              />
 
               {(!isCollapsed || isMobileOpen) && (
                 <div className="min-w-0 flex-1">
