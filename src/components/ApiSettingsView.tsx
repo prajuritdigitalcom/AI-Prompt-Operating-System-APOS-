@@ -458,7 +458,7 @@ export const ApiSettingsView: React.FC<ApiSettingsViewProps> = ({
           </span>
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-          API Key Anda disamarkan dan disimpan secara terenkripsi hanya pada memori browser lokal Anda (localStorage). API Key Anda tidak pernah disimpan di database eksternal dan hanya digunakan secara langsung untuk berkomunikasi dengan Google Gemini API.
+          API Key disimpan terenkripsi di browser Anda dan tidak pernah dikirim atau disimpan di server.
         </p>
       </div>
     </div>
