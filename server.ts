@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { Type } from '@google/genai';
-import { callGeminiWithRollingKeys } from './src/server/geminiHelper';
+import { callGeminiWithRollingKeys, getEnvironmentGeminiKeys } from './src/server/geminiHelper';
 import {
   runRequirementIntelligenceEngine,
   runRequirementVerificationEngine
@@ -27,22 +27,8 @@ async function startServer() {
 
   // Gemini Server Keys Count
   app.get('/api/server-keys-count', (req, res) => {
-    const envKeysRaw = process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || '';
-    const parsedEnvKeys = envKeysRaw
-      .split(/[\n,;]+/)
-      .map(k => k.trim())
-      .filter(Boolean);
-
-    let keyIndex = 1;
-    while (process.env[`GEMINI_API_KEY_${keyIndex}`]) {
-      const idxKey = process.env[`GEMINI_API_KEY_${keyIndex}`]?.trim();
-      if (idxKey && !parsedEnvKeys.includes(idxKey)) {
-        parsedEnvKeys.push(idxKey);
-      }
-      keyIndex++;
-    }
-
-    res.json({ count: parsedEnvKeys.length });
+    const keys = getEnvironmentGeminiKeys();
+    res.json({ count: keys.length, labels: keys.map(k => k.label) });
   });
 
   // 1. Requirement Intelligence & Verification Endpoint (RIE & RV)
