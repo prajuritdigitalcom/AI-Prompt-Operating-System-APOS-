@@ -6,10 +6,26 @@ interface CallGeminiOptions {
   rollingKeys?: string[];
 }
 
+export interface KeyStatusLogItem {
+  keySnippet: string;
+  label: string;
+  status: 'success' | '429_rate_limit' | 'error' | 'skipped';
+  errorDetails?: string;
+}
+
 export interface GeminiCallResult {
   response: GenerateContentResponse;
   usedKeyLabel: string;
-  keyStatusLog: { keySnippet: string; status: 'success' | '429_rate_limit' | 'error' | 'skipped' }[];
+  keyStatusLog: KeyStatusLogItem[];
+}
+
+export class GeminiExhaustedError extends Error {
+  keyStatusLog: KeyStatusLogItem[];
+  constructor(message: string, keyStatusLog: KeyStatusLogItem[]) {
+    super(message);
+    this.name = 'GeminiExhaustedError';
+    this.keyStatusLog = keyStatusLog;
+  }
 }
 
 export function getEnvironmentGeminiKeys(): { key: string; label: string }[] {
@@ -97,7 +113,7 @@ export async function callGeminiWithRollingKeys(options: CallGeminiOptions): Pro
     throw new Error('No Gemini API keys available. Please configure an API key in Settings or Environment Variables.');
   }
 
-  const keyStatusLog: { keySnippet: string; status: 'success' | '429_rate_limit' | 'error' | 'skipped' }[] = [];
+  const keyStatusLog: KeyStatusLogItem[] = [];
 
   for (const candidate of candidates) {
     const keySnippet = candidate.key.length > 8
@@ -115,7 +131,11 @@ export async function callGeminiWithRollingKeys(options: CallGeminiOptions): Pro
       });
 
       const response = await ai.models.generateContent(params);
-      keyStatusLog.push({ keySnippet, status: 'success' });
+      keyStatusLog.push({
+        keySnippet,
+        label: candidate.label,
+        status: 'success'
+      });
 
       return {
         response,
@@ -128,7 +148,9 @@ export async function callGeminiWithRollingKeys(options: CallGeminiOptions): Pro
 
       keyStatusLog.push({
         keySnippet,
-        status: isRateLimit ? '429_rate_limit' : 'error'
+        label: candidate.label,
+        status: isRateLimit ? '429_rate_limit' : 'error',
+        errorDetails: errorMsg
       });
 
       console.warn(`[APOS Rolling API] Key ${keySnippet} (${candidate.label}) failed: ${errorMsg}`);
@@ -136,7 +158,8 @@ export async function callGeminiWithRollingKeys(options: CallGeminiOptions): Pro
     }
   }
 
-  throw new Error(
-    `All available API keys failed or exceeded rate limits (429). Key attempts: ${keyStatusLog.map(l => `${l.keySnippet}: ${l.status}`).join(', ')}`
+  throw new GeminiExhaustedError(
+    `Semua API Key (${keyStatusLog.length} Key) gagal atau melebihi batas limit kuota (429 Rate Limit / Quota Exhausted).`,
+    keyStatusLog
   );
 }

@@ -107,7 +107,12 @@ async function startServer() {
       });
     } catch (err: any) {
       console.error('Error in /api/analyze-requirements:', err);
-      res.status(500).json({ error: err.message || 'Requirement Intelligence & Verification failed' });
+      const isKeyExhausted = err.name === 'GeminiExhaustedError' || err.message?.includes('429') || err.message?.includes('limit');
+      res.status(500).json({
+        error: err.message || 'Requirement Intelligence & Verification failed',
+        isKeyExhausted,
+        keyStatusLog: err.keyStatusLog || []
+      });
     }
   });
 
@@ -210,7 +215,12 @@ Return ONLY the raw Markdown prompt text without extra conversational commentary
       });
     } catch (err: any) {
       console.error('Error in /api/generate-prompt:', err);
-      res.status(500).json({ error: err.message || 'Prompt Generation failed' });
+      const isKeyExhausted = err.name === 'GeminiExhaustedError' || err.message?.includes('429') || err.message?.includes('limit');
+      res.status(500).json({
+        error: err.message || 'Prompt Generation failed',
+        isKeyExhausted,
+        keyStatusLog: err.keyStatusLog || []
+      });
     }
   });
 
@@ -304,7 +314,12 @@ Provide scores for each framework, calculate overall score (weighted average), g
       });
     } catch (err: any) {
       console.error('Error in /api/audit-prompt:', err);
-      res.status(500).json({ error: err.message || 'Audit failed' });
+      const isKeyExhausted = err.name === 'GeminiExhaustedError' || err.message?.includes('429') || err.message?.includes('limit');
+      res.status(500).json({
+        error: err.message || 'Audit failed',
+        isKeyExhausted,
+        keyStatusLog: err.keyStatusLog || []
+      });
     }
   });
 
@@ -394,7 +409,12 @@ Return JSON containing the patchedMarkdown and the new re-audited scores.
       });
     } catch (err: any) {
       console.error('Error in /api/patch-prompt:', err);
-      res.status(500).json({ error: err.message || 'Patch Engine failed' });
+      const isKeyExhausted = err.name === 'GeminiExhaustedError' || err.message?.includes('429') || err.message?.includes('limit');
+      res.status(500).json({
+        error: err.message || 'Patch Engine failed',
+        isKeyExhausted,
+        keyStatusLog: err.keyStatusLog || []
+      });
     }
   });
 

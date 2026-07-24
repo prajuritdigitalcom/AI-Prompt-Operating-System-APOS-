@@ -14,7 +14,8 @@ import {
   Edit3,
   Bot,
   Zap,
-  ArrowRight
+  ArrowRight,
+  Key
 } from 'lucide-react';
 import { GeneratedPromptRecord, NavigationTab, FrameworkCache, UserApiKey } from '../types';
 
@@ -45,6 +46,17 @@ export const GeneratePromptView: React.FC<GeneratePromptViewProps> = ({
   const [statusMessage, setStatusMessage] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
 
+  // API Key transparency state
+  const [activeKeyInfo, setActiveKeyInfo] = React.useState<{
+    usedKeyLabel?: string;
+    keyStatusLog?: Array<{ keySnippet: string; label?: string; status: string; errorDetails?: string }>;
+  } | null>(activeRecord?.usedKeyLabel ? { usedKeyLabel: activeRecord.usedKeyLabel, keyStatusLog: activeRecord.keyStatusLog } : null);
+
+  const [keyExhaustedError, setKeyExhaustedError] = React.useState<{
+    message: string;
+    keyStatusLog: Array<{ keySnippet: string; label?: string; status: string; errorDetails?: string }>;
+  } | null>(null);
+
   // Result state
   const [currentRecord, setCurrentRecord] = React.useState<GeneratedPromptRecord | null>(activeRecord);
   const [markdownText, setMarkdownText] = React.useState(activeRecord?.markdownOutput || '');
@@ -59,6 +71,12 @@ export const GeneratePromptView: React.FC<GeneratePromptViewProps> = ({
       setTargetAi(activeRecord.targetAi || 'Gemini');
       setCurrentRecord(activeRecord);
       setMarkdownText(activeRecord.markdownOutput);
+      if (activeRecord.usedKeyLabel) {
+        setActiveKeyInfo({
+          usedKeyLabel: activeRecord.usedKeyLabel,
+          keyStatusLog: activeRecord.keyStatusLog
+        });
+      }
     }
   }, [activeRecord]);
 
@@ -69,6 +87,8 @@ export const GeneratePromptView: React.FC<GeneratePromptViewProps> = ({
     }
 
     setError(null);
+    setKeyExhaustedError(null);
+    setActiveKeyInfo(null);
     setIsGenerating(true);
     setCurrentStep(1);
     setStatusMessage('1/6: Requirement Analyzer sedang memperluas domain & konteks...');
@@ -95,11 +115,24 @@ export const GeneratePromptView: React.FC<GeneratePromptViewProps> = ({
       });
 
       if (!reqRes.ok) {
-        const errJson = await reqRes.json();
+        const errJson = await reqRes.json().catch(() => ({}));
+        if (errJson.isKeyExhausted || (errJson.keyStatusLog && errJson.keyStatusLog.length > 0)) {
+          setKeyExhaustedError({
+            message: errJson.error || 'Semua API Key (Server & Lokal) telah mencapai limit kuota (429 Rate Limit).',
+            keyStatusLog: errJson.keyStatusLog || []
+          });
+        }
         throw new Error(errJson.error || 'Gagal pada Requirement Intelligence Engine (RIE)');
       }
 
-      const { analysis } = await reqRes.json();
+      const reqData = await reqRes.json();
+      if (reqData.usedKeyLabel || reqData.keyStatusLog) {
+        setActiveKeyInfo({
+          usedKeyLabel: reqData.usedKeyLabel,
+          keyStatusLog: reqData.keyStatusLog
+        });
+      }
+      const { analysis } = reqData;
 
       setCurrentStep(2);
       setStatusMessage(`2/6: Engine 2 (RV) verified Requirement Model (Score: ${analysis.verification?.verificationScore || 95}/100, Status: ${analysis.verification?.status || 'PASS'})...`);
@@ -123,11 +156,24 @@ export const GeneratePromptView: React.FC<GeneratePromptViewProps> = ({
       });
 
       if (!genRes.ok) {
-        const errJson = await genRes.json();
+        const errJson = await genRes.json().catch(() => ({}));
+        if (errJson.isKeyExhausted || (errJson.keyStatusLog && errJson.keyStatusLog.length > 0)) {
+          setKeyExhaustedError({
+            message: errJson.error || 'Semua API Key (Server & Lokal) telah mencapai limit kuota (429 Rate Limit).',
+            keyStatusLog: errJson.keyStatusLog || []
+          });
+        }
         throw new Error(errJson.error || 'Gagal menyusun prompt Markdown');
       }
 
-      const { markdownOutput } = await genRes.json();
+      const genData = await genRes.json();
+      if (genData.usedKeyLabel || genData.keyStatusLog) {
+        setActiveKeyInfo({
+          usedKeyLabel: genData.usedKeyLabel,
+          keyStatusLog: genData.keyStatusLog
+        });
+      }
+      const { markdownOutput } = genData;
 
       // Step 4: Multi Framework Audit
       setCurrentStep(4);
@@ -146,11 +192,24 @@ export const GeneratePromptView: React.FC<GeneratePromptViewProps> = ({
       });
 
       if (!auditRes.ok) {
-        const errJson = await auditRes.json();
+        const errJson = await auditRes.json().catch(() => ({}));
+        if (errJson.isKeyExhausted || (errJson.keyStatusLog && errJson.keyStatusLog.length > 0)) {
+          setKeyExhaustedError({
+            message: errJson.error || 'Semua API Key (Server & Lokal) telah mencapai limit kuota (429 Rate Limit).',
+            keyStatusLog: errJson.keyStatusLog || []
+          });
+        }
         throw new Error(errJson.error || 'Gagal pada proses Audit');
       }
 
-      const { audit } = await auditRes.json();
+      const auditDataRes = await auditRes.json();
+      if (auditDataRes.usedKeyLabel || auditDataRes.keyStatusLog) {
+        setActiveKeyInfo({
+          usedKeyLabel: auditDataRes.usedKeyLabel,
+          keyStatusLog: auditDataRes.keyStatusLog
+        });
+      }
+      const { audit } = auditDataRes;
 
       // Step 5: Patch Engine & Re-Audit
       setCurrentStep(5);
@@ -172,9 +231,19 @@ export const GeneratePromptView: React.FC<GeneratePromptViewProps> = ({
       let finalMarkdown = markdownOutput;
       let finalScore = audit.scores;
       let patchHistory = [];
+      let finalUsedKeyLabel = auditDataRes.usedKeyLabel;
+      let finalKeyStatusLog = auditDataRes.keyStatusLog;
 
       if (patchRes.ok) {
         const patchData = await patchRes.json();
+        if (patchData.usedKeyLabel || patchData.keyStatusLog) {
+          finalUsedKeyLabel = patchData.usedKeyLabel;
+          finalKeyStatusLog = patchData.keyStatusLog;
+          setActiveKeyInfo({
+            usedKeyLabel: patchData.usedKeyLabel,
+            keyStatusLog: patchData.keyStatusLog
+          });
+        }
         finalMarkdown = patchData.patchedMarkdown || markdownOutput;
         finalScore = patchData.improvedScore || audit.scores;
         patchHistory = [{
@@ -200,7 +269,9 @@ export const GeneratePromptView: React.FC<GeneratePromptViewProps> = ({
         initialScore: audit.scores,
         patchedScore: finalScore,
         patchRecommendations: audit.patchRecommendations,
-        patchHistory
+        patchHistory,
+        usedKeyLabel: finalUsedKeyLabel,
+        keyStatusLog: finalKeyStatusLog
       };
 
       setCurrentRecord(newRecord);
@@ -372,6 +443,101 @@ export const GeneratePromptView: React.FC<GeneratePromptViewProps> = ({
           <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
+          </div>
+        )}
+
+        {/* Active API Key Transparency Indicator */}
+        {activeKeyInfo && !keyExhaustedError && (
+          <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-800 dark:text-blue-200 space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-bold">
+              <div className="flex items-center gap-2">
+                <Key className="w-4 h-4 text-blue-500 shrink-0" />
+                <span>API Key yang Digunakan: <span className="text-blue-700 dark:text-blue-300 font-extrabold">{activeKeyInfo.usedKeyLabel || 'Server Gemini Key'}</span></span>
+              </div>
+              <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] w-max border border-emerald-500/30">
+                🟢 Engine Berjalan Normal
+              </span>
+            </div>
+
+            {activeKeyInfo.keyStatusLog && activeKeyInfo.keyStatusLog.length > 0 && (
+              <div className="pt-2 border-t border-blue-500/20 space-y-1.5">
+                <p className="text-[11px] font-semibold text-gray-600 dark:text-gray-300">
+                  Status Percobaan API Key (Failover Rolling System):
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {activeKeyInfo.keyStatusLog.map((log, idx) => (
+                    <span
+                      key={idx}
+                      className={`px-2.5 py-1 rounded-md text-[10px] font-mono flex items-center gap-1.5 ${
+                        log.status === 'success'
+                          ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
+                          : 'bg-red-500/15 text-red-800 dark:text-red-300 border border-red-500/30'
+                      }`}
+                    >
+                      {log.status === 'success' ? '🟢' : '🔴'}
+                      <strong>Key #{idx + 1}</strong> ({log.label || 'API Key'}):
+                      <span>{log.status === 'success' ? 'Sukses' : '429 Limit / Error'}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Exhausted / Rate-Limited API Keys Warning Banner */}
+        {keyExhaustedError && (
+          <div className="p-5 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs space-y-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="font-black text-sm text-amber-900 dark:text-amber-100 flex items-center gap-2">
+                  <span>⚠️ Semua API Keys Server & Lokal Telah Mencapai Limit Kuota (429 Rate Limit)</span>
+                </h4>
+                <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+                  Sistem Engine APOS berfungsi <strong>100% normal</strong>. Namun, seluruh API Key publik bawaan Server saat ini sedang kehabisan kuota gratis karena tingginya trafik penggunaan pengunjung lain.
+                </p>
+              </div>
+            </div>
+
+            {/* Detailed Key Attempts List */}
+            {keyExhaustedError.keyStatusLog && keyExhaustedError.keyStatusLog.length > 0 && (
+              <div className="p-3.5 rounded-xl bg-black/5 dark:bg-black/30 border border-amber-500/20 space-y-2">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-amber-900 dark:text-amber-200">
+                  Rincian Hasil Percobaan API Key:
+                </div>
+                <div className="space-y-1.5">
+                  {keyExhaustedError.keyStatusLog.map((log, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-[11px] font-mono p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="text-red-500 font-bold">🔴 Key #{idx + 1}</span>
+                        <span className="font-bold">{log.label || 'API Key'}</span>
+                        <span className="text-gray-500 dark:text-gray-400">({log.keySnippet})</span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded bg-red-500/20 text-red-600 dark:text-red-400 font-bold text-[10px] shrink-0">
+                        {log.status === '429_rate_limit' ? '429 Limit Kuota' : 'Error'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Call To Action */}
+            <div className="pt-2 border-t border-amber-500/20 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="text-xs text-amber-800 dark:text-amber-300">
+                💡 <strong>Solusi untuk Pengunjung:</strong> Jangan hanya mengandalkan Server! Tambahkan API Key Google Gemini milik Anda di menu <strong>API Settings (Lokal)</strong> agar dapat terus melakukan Generation tanpa hambatan.
+              </div>
+              <button
+                onClick={() => onSelectTab('api')}
+                className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shrink-0 transition-all active:scale-95"
+              >
+                <Key className="w-4 h-4" />
+                <span>+ Buka API Settings & Tambah Key</span>
+              </button>
+            </div>
           </div>
         )}
       </div>

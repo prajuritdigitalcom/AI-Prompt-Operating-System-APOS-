@@ -106,6 +106,8 @@ export interface GeneratedPromptRecord {
   patchedScore: PromptScore;
   patchRecommendations: PatchRecommendation;
   patchHistory: PatchHistoryEntry[];
+  usedKeyLabel?: string;
+  keyStatusLog?: Array<{ keySnippet: string; label?: string; status: string; errorDetails?: string }>;
 }
 
 export interface UserApiKey {
