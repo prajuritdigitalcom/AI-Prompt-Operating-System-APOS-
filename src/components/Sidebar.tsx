@@ -42,10 +42,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const navContent = (
-    <div className="flex flex-col justify-between h-full py-4 text-gray-700 dark:text-gray-300">
-      <div className="space-y-4 px-3">
+    <div className="flex flex-col justify-between h-full py-5 text-gray-700 dark:text-gray-300">
+      <div className="space-y-4 px-3.5">
         {/* Sidebar Logo & Brand Header */}
-        <div className="px-2 pb-3 mb-2 border-b border-gray-200 dark:border-gray-800">
+        <div className="px-1 pb-4 mb-3 border-b border-gray-100 dark:border-gray-800/80">
           <div className="flex items-center justify-between">
             <div
               onClick={() => handleItemClick('generate')}
@@ -56,7 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <img
                 src="https://i.ibb.co.com/wr0x733r/prajurit-digital.jpg"
                 alt="Prajurit Digital"
-                className="w-10 h-10 rounded-xl object-cover shadow-md shadow-[#FE4C6F]/20 group-hover:scale-105 transition-transform shrink-0 border border-gray-200 dark:border-gray-700"
+                className="w-10 h-10 rounded-xl object-cover shadow-sm group-hover:scale-105 transition-transform shrink-0 border border-gray-200 dark:border-gray-700"
               />
 
               {(!isCollapsed || isMobileOpen) && (
@@ -65,11 +65,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <span className="font-black text-xl tracking-tight bg-gradient-to-r from-[#FE4C6F] via-[#FE4C6F] to-pink-500 bg-clip-text text-transparent">
                       APOS
                     </span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#FE4C6F]/10 text-[#FE4C6F] font-bold border border-[#FE4C6F]/20">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#FE4C6F]/10 text-[#FE4C6F] font-extrabold border border-[#FE4C6F]/20">
                       v1.0
                     </span>
                   </div>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold truncate">
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium truncate mt-0.5">
                     AI Prompt OS
                   </p>
                 </div>
@@ -78,7 +78,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             <button
               onClick={onCloseMobile}
-              className="p-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-400 md:hidden"
+              className="p-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 md:hidden"
             >
               <X className="w-5 h-5" />
             </button>
@@ -86,7 +86,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Navigation Items */}
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           {menuItems.map(item => {
             const Icon = item.icon;
             const isActive = currentTab === item.id;
@@ -95,14 +95,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={item.id}
                 onClick={() => handleItemClick(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs sm:text-sm transition-all group ${
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-xs sm:text-sm transition-all group ${
                   isActive
-                    ? 'bg-[#FE4C6F] text-white shadow-md shadow-[#FE4C6F]/20 font-semibold'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-800/80 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                    ? 'bg-[#FE4C6F] text-white shadow-md shadow-[#FE4C6F]/25 font-semibold'
+                    : 'hover:bg-gray-100/80 dark:hover:bg-gray-800/80 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                 } ${isCollapsed ? 'md:justify-center md:px-2' : ''}`}
                 title={isCollapsed ? item.label : undefined}
               >
-                <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-200'}`} />
+                <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white'}`} />
 
                 {(!isCollapsed || isMobileOpen) && (
                   <span className="truncate flex-1 text-left">{item.label}</span>
@@ -110,7 +110,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                 {(!isCollapsed || isMobileOpen) && item.badge !== undefined && (
                   <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                       isActive
                         ? 'bg-white/20 text-white'
                         : 'bg-[#FE4C6F]/10 text-[#FE4C6F] border border-[#FE4C6F]/20'
@@ -126,10 +126,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Footer Collapse Button for Desktop */}
-      <div className="px-3 pt-4 border-t border-gray-200 dark:border-gray-800 hidden md:block">
+      <div className="px-3.5 pt-4 border-t border-gray-100 dark:border-gray-800/80 hidden md:block">
         <button
           onClick={onToggleCollapse}
-          className="w-full flex items-center justify-center gap-2 p-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs font-medium transition-colors"
+          className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 hover:bg-gray-100 dark:hover:bg-gray-700/80 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-xs font-semibold transition-all border border-gray-200/60 dark:border-gray-700/50"
         >
           {isCollapsed ? (
             <ChevronRight className="w-4 h-4" />
